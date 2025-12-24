@@ -4,6 +4,9 @@ import logging
 import bcrypt
 import re
 
+# Ensure log directory exists (Windows maps '/tmp' to 'C:\\tmp')
+os.makedirs("/tmp/log", exist_ok=True)
+
 # 配置日志
 logging.basicConfig(
     level=logging.INFO,  # 设置日志级别为 INFO
@@ -14,8 +17,8 @@ logging.basicConfig(
     ]
 )
 
-# 数据库文件路径
-DB_PATH = "/config/data.db"
+# 数据库文件路径（允许通过环境变量覆盖，便于本地运行）
+DB_PATH = os.environ.get("DB_PATH") or os.environ.get("DATABASE") or "/config/data.db"
 
 # 定义状态码
 CONFIG_DEFAULT = 0
@@ -191,6 +194,7 @@ def create_tables():
     default_configs = [
         ("notification", "False"),
         ("notification_api_key", "your_api_key"),
+        ("chromedriver_path", ""),
         ("dateadded", "False"),
         ("actor_nfo", "False"),
         ("scrape_metadata", "False"),
@@ -262,11 +266,24 @@ def create_tables():
         ("bt0_base_url", "https://web2.mukaku.com"),
         ("btys_base_url", "https://www.btbtla.com"),
         ("gy_base_url", "https://www.gyg.si"),
+        ("btsj6_base_url", "https://www.btsj6.com"),
+        ("1lou_base_url", "https://www.1lou.me"),
+        ("seedhub_base_url", "https://www.seedhub.cc"),
+        ("jackett_base_url", "http://127.0.0.1:9117"),
+        ("jackett_api_key", ""),
+        ("jackett_verify_ssl", "True"),
+        ("jackett_timeout_seconds", "90"),
+        ("jackett_retries", "2"),
         ("bthd_enabled", "False"),
         ("hdtv_enabled", "False"),
         ("bt0_enabled", "True"),
         ("btys_enabled", "True"),
         ("gy_enabled", "True"),
+        ("btsj6_enabled", "True"),
+        ("1lou_enabled", "True"),
+        ("seedhub_enabled", "True"),
+        ("jackett_enabled", "False"),
+        ("1lou_max_hits", "8"),
         ("run_interval_hours", "6")
     ]
 
@@ -497,6 +514,7 @@ def ensure_all_configs_exist():
     default_configs = [
         ("notification", "False"),
         ("notification_api_key", "your_api_key"),
+        ("chromedriver_path", ""),
         ("dateadded", "False"),
         ("actor_nfo", "False"),
         ("scrape_metadata", "False"),
@@ -568,11 +586,24 @@ def ensure_all_configs_exist():
         ("bt0_base_url", "https://web2.mukaku.com"),
         ("btys_base_url", "https://www.btbtla.com"),
         ("gy_base_url", "https://www.gyg.si"),
+        ("btsj6_base_url", "https://www.btsj6.com"),
+        ("1lou_base_url", "https://www.1lou.me"),
+        ("seedhub_base_url", "https://www.seedhub.cc"),
+        ("jackett_base_url", "http://127.0.0.1:9117"),
+        ("jackett_api_key", ""),
+        ("jackett_verify_ssl", "True"),
+        ("jackett_timeout_seconds", "90"),
+        ("jackett_retries", "2"),
         ("bthd_enabled", "False"),
         ("hdtv_enabled", "False"),
         ("bt0_enabled", "True"),
         ("btys_enabled", "True"),
         ("gy_enabled", "True"),
+        ("btsj6_enabled", "True"),
+        ("1lou_enabled", "True"),
+        ("seedhub_enabled", "True"),
+        ("jackett_enabled", "False"),
+        ("1lou_max_hits", "8"),
         ("run_interval_hours", "6")
     ]
 
@@ -596,6 +627,7 @@ def check_config_data():
 
     default_configs = {
         "notification_api_key": "your_api_key",
+        "chromedriver_path": "",
         "nfo_exclude_dirs": "Season,Movie,Music,Unknown,backdrops,.actors,.deletedByTMM",
         "nfo_excluded_filenames": "season.nfo,video1.nfo",
         "nfo_excluded_subdir_keywords": "Season,Music,Unknown,backdrops,.actors,.deletedByTMM",
@@ -667,11 +699,13 @@ def check_config_data():
         "bt0_base_url": "https://web2.mukaku.com",
         "btys_base_url": "https://www.btbtla.com",
         "gy_base_url": "https://www.gyg.si",
+        "btsj6_base_url": "https://www.btsj6.com",
         "bthd_enabled": "False",
         "hdtv_enabled": "False",
         "bt0_enabled": "True",
         "btys_enabled": "True",
         "gy_enabled": "True",
+        "btsj6_enabled": "True",
         "run_interval_hours": "6"
     }
 

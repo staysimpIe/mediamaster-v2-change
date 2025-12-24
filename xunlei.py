@@ -15,8 +15,11 @@ import hashlib
 import urllib.parse
 import bencodepy
 import base64
+from pathlib import Path
+import shutil
 
 # 配置日志
+os.makedirs("/tmp/log", exist_ok=True)
 logging.basicConfig(
     level=logging.INFO,  # 设置日志级别为 INFO
     format="%(asctime)s - %(levelname)s - %(message)s",  # 设置日志格式
@@ -29,10 +32,12 @@ logging.basicConfig(
 class XunleiDownloader:
     TORRENT_DIR = "/Torrent"  # 定义种子文件目录为类属性
 
-    def __init__(self, db_path='/config/data.db'):
+    def __init__(self, db_path=None):
         self.db_path = db_path
         self.driver = None
         self.config = {}
+        if not self.db_path:
+            self.db_path = os.environ.get("DB_PATH") or os.environ.get("DATABASE") or '/config/data.db'
 
     def setup_webdriver(self, instance_id=11):
         if hasattr(self, 'driver') and self.driver is not None:
@@ -63,9 +68,17 @@ class XunleiDownloader:
         options.add_argument('--lang=zh-CN')
         # 设置用户配置文件缓存目录，使用固定instance-id 11作为该程序特有的id
         user_data_dir = f'/app/ChromeCache/user-data-dir-inst-{instance_id}'
+        try:
+            os.makedirs(user_data_dir, exist_ok=True)
+        except Exception:
+            pass
         options.add_argument(f'--user-data-dir={user_data_dir}')
         # 设置磁盘缓存目录，使用instance-id区分
         disk_cache_dir = f"/app/ChromeCache/disk-cache-dir-inst-{instance_id}"
+        try:
+            os.makedirs(disk_cache_dir, exist_ok=True)
+        except Exception:
+            pass
         options.add_argument(f"--disk-cache-dir={disk_cache_dir}")
         
         # 设置默认下载目录，使用instance-id区分
@@ -81,11 +94,37 @@ class XunleiDownloader:
         }
         options.add_experimental_option("prefs", prefs)
 
-        # 指定 chromedriver 的路径
-        service = Service(executable_path='/usr/lib/chromium/chromedriver')
+        # 指定 chromedriver 的路径（优先环境变量/系统设置；Docker/Linux 再用默认路径）
+        configured_driver_path = ""
+        try:
+            configured_driver_path = (self.config.get("chromedriver_path") or "").strip()
+        except Exception:
+            configured_driver_path = ""
+        driver_path = os.environ.get("CHROMEDRIVER_PATH") or configured_driver_path or "/usr/lib/chromium/chromedriver"
+        service = Service(executable_path=driver_path) if driver_path and os.path.exists(driver_path) else None
         
         try:
-            self.driver = webdriver.Chrome(service=service, options=options)
+            if service is not None:
+                self.driver = webdriver.Chrome(service=service, options=options)
+            else:
+                try:
+                    self.driver = webdriver.Chrome(options=options)
+                except Exception as e:
+                    msg = str(e)
+                    if ("only supports Chrome version" in msg) or ("error decoding response body" in msg) or ("Unable to obtain driver" in msg):
+                        try:
+                            cache_root = Path.home() / ".cache" / "selenium"
+                            shutil.rmtree(cache_root / "chromedriver", ignore_errors=True)
+                            try:
+                                (cache_root / "se-metadata.json").unlink(missing_ok=True)
+                            except Exception:
+                                pass
+                            self.driver = webdriver.Chrome(options=options)
+                        except Exception:
+                            logging.warning("Selenium Manager获取驱动失败，尝试使用PATH中的chromedriver")
+                            self.driver = webdriver.Chrome(service=Service(), options=options)
+                    else:
+                        raise
             logging.info(f"WebDriver初始化完成 (Instance ID: {instance_id})")
         except Exception as e:
             logging.error(f"WebDriver初始化失败: {e}")
@@ -633,6 +672,13 @@ class XunleiDownloader:
             self.driver = None  # 重置 driver 变量
 
 if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(description="迅雷-添加下载任务")
+    parser.add_argument("--magnet", type=str, default="", help="直接添加指定磁力链接（可选）")
+    parser.add_argument("--label", type=str, default="", help="任务标签/标题（可选，仅用于日志）")
+    args = parser.parse_args()
+
     downloader = XunleiDownloader()
 
     # 加载配置
@@ -641,21 +687,6 @@ if __name__ == "__main__":
     
     if download_type != "xunlei":
         logging.info(f"当前下载下载器为 {download_type}，无需执行迅雷-添加下载任务")
-        exit(0)
-
-    # 检查 Torrent 目录是否有种子文件
-    torrent_dir = XunleiDownloader.TORRENT_DIR
-    if not os.path.exists(torrent_dir):
-        logging.info(f"目录 {torrent_dir} 不存在，程序结束")
-        exit(0)
-
-    torrent_files = [
-        f for f in os.listdir(torrent_dir)
-        if f.lower().endswith(".torrent")
-    ]
-
-    if not torrent_files:
-        logging.info("没有发现种子文件，程序结束")
         exit(0)
 
     # 初始化浏览器
@@ -671,15 +702,35 @@ if __name__ == "__main__":
         downloader.close_driver()
         exit(1)
 
-    # 获取配置参数
+    # 设备切换（如果配置了）
     xunlei_device_name = config.get("xunlei_device_name")
-    xunlei_dir = config.get("xunlei_dir")
-
-    # 在打开新建任务弹窗前检查设备
-    if not downloader.check_device(xunlei_device_name):
+    if xunlei_device_name and not downloader.check_device(xunlei_device_name):
         logging.error("设备切换失败")
         downloader.close_driver()
         exit(1)
+
+    # 1) 直接添加 magnet 模式
+    if args.magnet:
+        ok = downloader._add_magnet_link(args.magnet, original_file_name=None)
+        downloader.close_driver()
+        exit(0 if ok else 1)
+
+    # 2) 兼容原有：检查 Torrent 目录是否有种子文件
+    torrent_dir = XunleiDownloader.TORRENT_DIR
+    if not os.path.exists(torrent_dir):
+        logging.info(f"目录 {torrent_dir} 不存在，程序结束")
+        downloader.close_driver()
+        exit(0)
+
+    torrent_files = [
+        f for f in os.listdir(torrent_dir)
+        if f.lower().endswith(".torrent")
+    ]
+
+    if not torrent_files:
+        logging.info("没有发现种子文件，程序结束")
+        downloader.close_driver()
+        exit(0)
 
     # 生成磁力链接
     magnet_links = []

@@ -20,47 +20,20 @@
 
 **特别说明**
 
-目前支持站点：BT影视、不太灵影视、观影、高清剧集网、高清影视之家。
+本项目基于项目：[https://github.com/smysong/mediamaster-v2](https://github.com/smysong/mediamaster-v2) 二次开发
 
-支持下载器：迅雷、qBittorrent、Transmission
+增加BT世界网、BT之家、Seedhub三个bt网站索引支持。
 
-CPU架构支持：x86_64 、 ARM64
+支持jackett配置及索引。
 
-本项目仅用于个人学习研究Python技术使用，请勿用于其他用途。
-
-**管理界面预览：**
-![主页](img/img1.png)
-![仪表盘](img/img2.png)
-![功能页](img/img3.png)
-
-## 微信公众号
-
-<div align="center">
-  <img src="img/WeChat_qrcode.jpg" alt="微信公众号二维码" width="120">
-  <p>关注MediaMaster微信公众号获取最新资讯和技术支持，可通过公众号发送私信消息进行反馈以及获取技术支持</p>
-</div>
-
-## 更新日志
-
-查看 [更新日志](CHANGELOG.md) 以了解每个版本的详细变更记录。
 
 ## 许可证
 
 本项目采用 [MIT License](LICENSE) 许可证。详情请参阅 [LICENSE](LICENSE) 文件。
 
-## Docker 仓库地址
-
-本项目Docker仓库： https://hub.docker.com/r/smysong/mediamaster-v2
-
-版本标签：
-
-稳定版：latest `docker pull smysong/mediamaster-v2:latest`
-
-测试版：beta `docker pull smysong/mediamaster-v2:beta`
-
 ## 配置文档
 
-详细安装配置文档： http://wiki.songmy.top:8080/web/#/686311457
+详细安装配置文档见原项目：[https://github.com/smysong/mediamaster-v2](https://github.com/smysong/mediamaster-v2)
 
 ## 快速开始
 

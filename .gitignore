@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Local SQLite DBs (dev artifacts)
+data.db
+*.db
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+
+# Logs / temp
+/tmp/
